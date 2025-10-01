@@ -8,15 +8,14 @@ export async function GET(
   try {
     const product = await prisma.product.findUnique({
       where: {
-        slug: params.slug,
-        isVisible: true
+        slug: params.slug
       },
       include: {
         categories: true
       }
     })
     
-    if (!product) {
+    if (!product || !product.isVisible) {
       return NextResponse.json(
         { 
           success: false, 
