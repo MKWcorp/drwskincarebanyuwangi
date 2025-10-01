@@ -75,11 +75,8 @@ const ProductPage = () => {
     window.open(whatsappUrl, '_blank');
   };
 
-  const handleProductDetail = (product: Product) => {
-    // For now, we'll show product details via WhatsApp
-    const message = `Halo kak aku mau tanya detail produk ${product.namaProduk}. Bisa dijelaskan lebih lengkap?`;
-    const whatsappUrl = `https://wa.me/6285852555571?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
+  const handleProductDetail = (slug: string) => {
+    window.location.href = `/product/${slug}`;
   };
 
   const handleImageError = (productId: string) => {
@@ -292,7 +289,7 @@ const ProductPage = () => {
                         Beli
                       </button>
                       <button
-                        onClick={() => handleProductDetail(product)}
+                        onClick={() => handleProductDetail(product.slug)}
                         className="flex-1 bg-gray-100 text-gray-700 py-2 md:py-3 rounded-lg hover:bg-gray-200 transition-colors font-semibold text-xs md:text-sm"
                       >
                         <FontAwesomeIcon icon={faInfoCircle} className="mr-1" />

@@ -12,6 +12,7 @@ interface Product {
   deskripsi: string | null;
   hargaUmum: number | null;
   gambar: string | null;
+  slug: string;
   categories?: {
     name: string;
   } | null;
@@ -85,9 +86,10 @@ const LandingPage = () => {
   const renderProduct = (product: Product | StaticProduct, index: number) => {
     const isStatic = !('deskripsi' in product);
     const staticProduct = product as StaticProduct;
+    const realProduct = product as Product;
     
-    return (
-      <div key={product.id} className="bg-white rounded-lg md:rounded-2xl shadow-lg p-3 md:p-6 text-center hover:shadow-xl transition-shadow">
+    const productCard = (
+      <div className="bg-white rounded-lg md:rounded-2xl shadow-lg p-3 md:p-6 text-center hover:shadow-xl transition-shadow">
         <div className="relative w-full h-32 md:h-48 mb-3 md:mb-4">
           {product.gambar ? (
             <Image 
@@ -107,7 +109,7 @@ const LandingPage = () => {
         
         {/* Category */}
         <div className="inline-block bg-primary/10 text-primary text-xs px-2 md:px-3 py-1 rounded-full mb-2 md:mb-3">
-          {isStatic ? staticProduct.category : (product as Product).categories?.name || 'Skincare'}
+          {isStatic ? staticProduct.category : realProduct.categories?.name || 'Skincare'}
         </div>
         
         <h3 className="text-sm md:text-xl font-semibold text-gray-800 mb-2 md:mb-3 line-clamp-2">
@@ -117,15 +119,29 @@ const LandingPage = () => {
         {/* Price */}
         <div className="text-sm md:text-lg font-bold text-primary mb-3 md:mb-4">
           {formatPrice(product.hargaUmum)}
-        </div>          <a 
-          href={`https://wa.me/6285852555571?text=Halo%20kak%20aku%20mau%20tanya%20produk%20${encodeURIComponent(product.namaProduk)}`}
-          className="bg-primary text-white px-4 md:px-6 py-2 rounded-lg hover:bg-pink-600 transition-colors inline-block text-xs md:text-sm"
-        >
-          <FontAwesomeIcon icon={faShoppingCart} className="mr-2" />
-          Beli Sekarang
-        </a>
+        </div>
+        
+        {!isStatic && realProduct.slug ? (
+          <Link 
+            href={`/product/${realProduct.slug}`}
+            className="bg-primary text-white px-4 md:px-6 py-2 rounded-lg hover:bg-pink-600 transition-colors inline-block text-xs md:text-sm"
+          >
+            <FontAwesomeIcon icon={faShoppingCart} className="mr-2" />
+            Lihat Detail
+          </Link>
+        ) : (
+          <a 
+            href={`https://wa.me/6285852555571?text=Halo%20kak%20aku%20mau%20tanya%20produk%20${encodeURIComponent(product.namaProduk)}`}
+            className="bg-primary text-white px-4 md:px-6 py-2 rounded-lg hover:bg-pink-600 transition-colors inline-block text-xs md:text-sm"
+          >
+            <FontAwesomeIcon icon={faShoppingCart} className="mr-2" />
+            Beli Sekarang
+          </a>
+        )}
       </div>
     );
+    
+    return <div key={product.id}>{productCard}</div>;
   };
 
   return (
