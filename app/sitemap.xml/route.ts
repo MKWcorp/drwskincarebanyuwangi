@@ -17,12 +17,8 @@ export async function GET() {
   ];
 
   // Get product slugs dynamically from database
-  const productSlugs: string[] = [];
-  try {
-    const products = await prisma.product.findMany({
-      where: {
-        isVisible: true
-      },
+  const productSlugs: string[] = [];  try {
+    const products = await prisma.produk.findMany({
       select: {
         slug: true
       }

@@ -18,9 +18,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl
     const slug = searchParams.get('slug')
     const type = searchParams.get('type') // 'products', 'packages', or 'all'
-    
-    let products = []
-    let packages = []
+      let products: any[] = []
+    let packages: any[] = []
     
     if (slug) {
       // Get specific product by slug
