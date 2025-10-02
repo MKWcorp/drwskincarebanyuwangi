@@ -66,26 +66,35 @@ interface Product {
   hargaManager: number | null;
   hargaSupervisor: number | null;
   gambar: string | null;
-  fotoProduk: string | null;
-  categoryId: string | null;
+  fotoProduk: Array<{
+    url: string;
+    alt: string | null;
+    urutan: number;
+  }> | null;
   slug: string;
   bpom: string | null;
-  isBundling: boolean;
-  isVisible: boolean;
+  type: 'product' | 'package';
   createdAt: string;
   updatedAt: string;
-  categories?: {
+  categories: {
     id: string;
     name: string;
-    slug: string;
     description: string | null;
   } | null;
+  packageContents?: Array<{
+    id: string;
+    nama: string;
+    jumlah: number;
+    gambar: string | null;
+  }> | null;
 }
 
 const ProductPage = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'products' | 'packages'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
@@ -93,47 +102,93 @@ const ProductPage = () => {
   useEffect(() => {
     fetchProducts();
   }, []);
-
   useEffect(() => {
     filterProducts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [products, searchQuery]);
+  }, [products, searchQuery, activeFilter, selectedCategory]);  const filterProducts = () => {
+    let filtered = products;
 
-  const filterProducts = () => {
-    if (!searchQuery.trim()) {
-      setFilteredProducts(products);
-      return;
+    // Filter by type first
+    if (activeFilter !== 'all') {
+      if (activeFilter === 'products') {
+        filtered = filtered.filter(product => product.type === 'product');
+      } else if (activeFilter === 'packages') {
+        filtered = filtered.filter(product => product.type === 'package');
+      }
     }
 
-    const query = searchQuery.toLowerCase().trim();
-    const filtered = products.filter(product => 
-      product.namaProduk.toLowerCase().includes(query) ||
-      (product.deskripsi && product.deskripsi.toLowerCase().includes(query)) ||
-      (product.categories && product.categories.name.toLowerCase().includes(query)) ||
-      (product.bpom && product.bpom.toLowerCase().includes(query))
-    );
+    // Filter by category
+    if (selectedCategory) {
+      filtered = filtered.filter(product => 
+        product.categories && product.categories.name.toLowerCase() === selectedCategory.toLowerCase()
+      );
+    }
+
+    // Then filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(product => 
+        product.namaProduk.toLowerCase().includes(query) ||
+        (product.deskripsi && product.deskripsi.toLowerCase().includes(query)) ||
+        (product.categories && product.categories.name.toLowerCase().includes(query)) ||
+        (product.bpom && product.bpom.toLowerCase().includes(query))
+      );
+    }
+
     setFilteredProducts(filtered);
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
   };
-
   const clearSearch = () => {
     setSearchQuery('');
+    setSelectedCategory('');
   };
-
+  const handleCategoryClick = (categoryName: string) => {
+    setSelectedCategory(categoryName);
+    setSearchQuery(categoryName); // Set search query to category name
+    setActiveFilter('all'); // Reset type filter to show all types in the category
+  };
   const fetchProducts = async () => {
     try {
-      const response = await fetch('/api/products');
-      const result = await response.json();
+      // Fetch both products and packages
+      const [productsResponse, packagesResponse] = await Promise.all([
+        fetch('/api/products'),
+        fetch('/api/packages')
+      ]);
       
-      if (result.success) {
-        setProducts(result.data);
-        setFilteredProducts(result.data);
-      } else {
-        setError(result.error || 'Failed to fetch products');
+      const productsResult = await productsResponse.json();
+      const packagesResult = await packagesResponse.json();
+      
+      let allItems: Product[] = [];
+      
+      // Add products with type indicator
+      if (productsResult.success) {
+        const productsWithType = productsResult.data.map((product: any) => ({
+          ...product,
+          type: 'product' as const
+        }));
+        allItems = [...allItems, ...productsWithType];
       }
+      
+      // Add packages with type indicator
+      if (packagesResult.success) {
+        const packagesWithType = packagesResult.data.map((pkg: any) => ({
+          ...pkg,
+          type: 'package' as const
+        }));
+        allItems = [...allItems, ...packagesWithType];
+      }
+      
+      // Check if both requests failed
+      if (!productsResult.success && !packagesResult.success) {
+        setError('Failed to fetch products and packages');
+        return;
+      }
+      
+      setProducts(allItems);
+      setFilteredProducts(allItems);
     } catch (err) {
       setError('Error connecting to server');
       console.error('Error fetching products:', err);
@@ -150,9 +205,7 @@ const ProductPage = () => {
       minimumFractionDigits: 0,
     }).format(Number(price));
   };
-
-  const handleWhatsAppOrder = (productName: string) => {
-    const message = `Halo kak aku mau tanya produk ${productName}`;
+  const handleWhatsAppOrder = (message: string) => {
     const whatsappUrl = `https://wa.me/6285852555571?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   };
@@ -273,6 +326,41 @@ const ProductPage = () => {
                   </svg>
                 </button>
               )}
+            </div>          </div>
+
+          {/* Filter Tabs */}
+          <div className="flex justify-center mt-8">
+            <div className="inline-flex bg-gray-100 rounded-xl p-1">
+              <button
+                onClick={() => setActiveFilter('all')}
+                className={`px-6 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                  activeFilter === 'all'
+                    ? 'bg-primary text-white shadow-md'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                Semua ({products.length})
+              </button>
+              <button
+                onClick={() => setActiveFilter('products')}
+                className={`px-6 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                  activeFilter === 'products'
+                    ? 'bg-primary text-white shadow-md'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                Produk ({products.filter(p => p.type === 'product').length})
+              </button>
+              <button
+                onClick={() => setActiveFilter('packages')}
+                className={`px-6 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                  activeFilter === 'packages'
+                    ? 'bg-primary text-white shadow-md'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                Paket ({products.filter(p => p.type === 'package').length})
+              </button>
             </div>
           </div>
         </div>
@@ -384,21 +472,53 @@ const ProductPage = () => {
                         BPOM: {product.bpom}
                       </div>
                     )}
-                  </div>
-
-                  {/* Product Info */}
-                  <div className="p-3 md:p-6">
-                    {/* Category */}
-                    {product.categories && (
-                      <div className="inline-block bg-primary/10 group-hover:bg-primary/20 text-primary text-xs px-2 md:px-3 py-1 rounded-full mb-2 md:mb-3 transition-all duration-300 group-hover:scale-105">
-                        {product.categories.name}
-                      </div>
-                    )}
+                  </div>                  {/* Product Info */}
+                  <div className="p-3 md:p-6">                    {/* Type Badge */}
+                    <div 
+                      className={`inline-flex items-center gap-1 text-xs px-2 md:px-3 py-1 rounded-full mb-2 md:mb-3 transition-all duration-300 group-hover:scale-105 ${
+                        product.type === 'package' 
+                          ? 'bg-purple-100 text-purple-800 group-hover:bg-purple-200'
+                          : 'bg-primary/10 text-primary group-hover:bg-primary/20 hover:bg-primary/30 cursor-pointer'
+                      }`}
+                      onClick={(e) => {
+                        // Only make clickable if it's a product with a category (not a package)
+                        if (product.type !== 'package' && product.categories?.name) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleCategoryClick(product.categories.name);
+                        }
+                      }}
+                    >
+                      <FontAwesomeIcon 
+                        icon={product.type === 'package' ? faShoppingCart : faInfoCircle} 
+                        className="w-3 h-3" 
+                      />
+                      {product.type === 'package' ? 'PAKET' : product.categories?.name || 'PRODUK'}
+                    </div>
                     
                     {/* Product Name */}
                     <h3 className="text-sm md:text-lg font-semibold text-gray-800 group-hover:text-primary mb-2 line-clamp-2 min-h-[2.5rem] md:min-h-[3.5rem] transition-colors duration-300">
                       {product.namaProduk}
                     </h3>
+                    
+                    {/* Package Contents */}
+                    {product.type === 'package' && product.packageContents && product.packageContents.length > 0 && (
+                      <div className="mb-3">
+                        <p className="text-xs text-gray-500 mb-1">Berisi {product.packageContents.length} produk:</p>
+                        <div className="text-xs text-gray-600">
+                          {product.packageContents.slice(0, 2).map((item, index) => (
+                            <span key={item.id}>
+                              {item.nama}
+                              {item.jumlah > 1 && ` (${item.jumlah}x)`}
+                              {index < Math.min(product.packageContents!.length - 1, 1) && ', '}
+                            </span>
+                          ))}
+                          {product.packageContents.length > 2 && (
+                            <span className="text-primary"> +{product.packageContents.length - 2} lainnya</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
                     
                     {/* Description */}
                     {product.deskripsi && (
@@ -406,25 +526,31 @@ const ProductPage = () => {
                         {product.deskripsi}
                       </p>
                     )}
-                    
-                    {/* Price */}
+                      {/* Price */}
                     <div className="text-lg md:text-xl font-bold text-primary group-hover:text-pink-600 mb-3 md:mb-4 transition-colors duration-300 group-hover:scale-105 transform">
-                      <span className="text-xs md:text-sm text-gray-500 font-normal group-hover:text-gray-600 transition-colors duration-300">Harga: </span>
                       {formatPrice(product.hargaUmum)}
+                      {product.type === 'package' && (
+                        <div className="flex items-center gap-1 text-xs text-green-600 font-normal mt-1">
+                          <FontAwesomeIcon icon={faShoppingCart} className="w-3 h-3" />
+                          Hemat dengan paket bundling
+                        </div>
+                      )}
                     </div>
-                    
-                    {/* Action Buttons */}
+                      {/* Action Buttons */}
                     <div className="flex gap-1 md:gap-2 group-hover:translate-y-0 translate-y-1 transition-transform duration-300">
                       <button
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          handleWhatsAppOrder(product.namaProduk);
+                          const message = product.type === 'package' 
+                            ? `Halo kak, saya tertarik dengan paket ${product.namaProduk}`
+                            : `Halo kak, saya mau tanya produk ${product.namaProduk}`;
+                          handleWhatsAppOrder(message);
                         }}
                         className="flex-1 bg-primary text-white py-2 md:py-3 rounded-lg hover:bg-pink-600 active:bg-pink-700 transition-all duration-300 font-semibold text-xs md:text-sm transform hover:scale-105 active:scale-95 shadow-md hover:shadow-lg"
                       >
                         <FontAwesomeIcon icon={faShoppingCart} className="mr-1 group-hover:animate-pulse" />
-                        Beli
+                        {product.type === 'package' ? 'Pesan Paket' : 'Beli'}
                       </button>
                       <div className="flex-1 bg-gray-100 text-gray-700 py-2 md:py-3 rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-all duration-300 font-semibold text-xs md:text-sm text-center transform hover:scale-105 active:scale-95 shadow-md hover:shadow-lg">
                         <FontAwesomeIcon icon={faInfoCircle} className="mr-1 group-hover:animate-bounce" />

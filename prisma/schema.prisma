@@ -7,175 +7,116 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Product {
-  id              String         @id
+model bahan_aktif {
+  id                 Int                  @id @default(autoincrement())
+  nama_bahan         String               @unique @db.VarChar(100)
+  produk_bahan_aktif produk_bahan_aktif[]
+}
+
+model foto_produk {
+  id_foto      BigInt        @id @default(autoincrement())
+  produk_id    BigInt?
+  url_foto     String
+  alt_text     String?       @db.VarChar(255)
+  urutan       Int           @default(0)
+  created_at   DateTime      @default(now()) @db.Timestamptz(6)
+  paket_id     BigInt?
+  paket_produk paket_produk? @relation(fields: [paket_id], references: [id_paket], onDelete: Cascade, onUpdate: NoAction, map: "fk_paket")
+  produk       produk?       @relation(fields: [produk_id], references: [id_produk], onDelete: Cascade, onUpdate: NoAction, map: "fk_produk")
+}
+
+model kategori {
+  id              Int               @id @default(autoincrement())
+  nama_kategori   String            @unique @db.VarChar(100)
   deskripsi       String?
-  gambar          String?
-  apiData         Json?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  bpom            String?
-  fotoProduk      String?
-  hargaConsultant Decimal?
-  hargaDirector   Decimal?
-  hargaManager    Decimal?
-  hargaSupervisor Decimal?
-  hargaUmum       Decimal?
-  idProduk        String         @unique
-  namaProduk      String
-  categoryId      String?
-  slug            String         @unique
-  apiBundlingId   String?        @unique
-  isBundling      Boolean        @default(false)
-  isVisible       Boolean        @default(true)
-  items           Json?
-  harga_custom    harga_custom[]
-  categories      categories?    @relation(fields: [categoryId], references: [id])
-
-  @@map("products")
+  created_at      DateTime          @default(now()) @db.Timestamptz(6)
+  paket_kategori  paket_kategori[]
+  produk_kategori produk_kategori[]
 }
 
-model categories {
-  id          String    @id
-  name        String    @unique
-  slug        String    @unique
-  description String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime
-  products    Product[]
+model paket_isi {
+  paket_id     BigInt
+  produk_id    BigInt
+  jumlah       Int          @default(1)
+  paket_produk paket_produk @relation(fields: [paket_id], references: [id_paket], onDelete: Cascade, onUpdate: NoAction)
+  produk       produk       @relation(fields: [produk_id], references: [id_produk], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([paket_id, produk_id])
 }
 
-model click_logs {
-  id         String    @id
-  createdAt  DateTime  @default(now())
-  resellerId String
-  productId  String?
-  ipAddress  String?
-  referrer   String?
-  userAgent  String?
-  resellers  resellers @relation(fields: [resellerId], references: [id], onDelete: Cascade)
+model paket_kategori {
+  paket_id     BigInt
+  kategori_id  Int
+  kategori     kategori     @relation(fields: [kategori_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  paket_produk paket_produk @relation(fields: [paket_id], references: [id_paket], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([paket_id, kategori_id])
 }
 
-model comments {
-  id                  Int       @id @default(autoincrement())
-  comment_id          String    @db.VarChar(100)
-  permalink           String
-  post_timestamp      DateTime? @db.Timestamp(6)
-  comment_timestamp   DateTime  @db.Timestamp(6)
-  username            String?   @db.VarChar(255)
-  comment             String
-  source_profile_link String?
-  platform            String?   @default("instagram") @db.VarChar(50)
-  partner_name        String    @db.VarChar(255)
-  partner_id          String    @db.VarChar(50)
-  is_reply            Boolean?  @default(false)
-  parent_comment_id   String?   @db.VarChar(100)
-  created_at          DateTime? @default(now()) @db.Timestamp(6)
-  processed_at        DateTime? @default(now()) @db.Timestamp(6)
-
-  @@unique([comment_id, partner_id])
-  @@index([is_reply], map: "idx_comments_is_reply")
-  @@index([partner_id], map: "idx_comments_partner_id")
-  @@index([platform], map: "idx_comments_platform")
-  @@index([comment_timestamp], map: "idx_comments_timestamp")
+model paket_produk {
+  id_paket         BigInt           @id
+  nama_paket       String           @db.VarChar(255)
+  slug             String?          @unique @db.VarChar(255)
+  deskripsi        String?
+  foto_utama       String?
+  harga_director   Int              @default(0)
+  harga_manager    Int              @default(0)
+  harga_supervisor Int              @default(0)
+  harga_consultant Int              @default(0)
+  harga_umum       Int              @default(0)
+  created_at       DateTime         @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime         @default(now()) @db.Timestamptz(6)
+  foto_produk      foto_produk[]
+  paket_isi        paket_isi[]
+  paket_kategori   paket_kategori[]
 }
 
-model harga_custom {
-  id          String    @id
-  resellerId  String
-  productId   String
-  hargaCustom Decimal
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime
-  products    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
-  resellers   resellers @relation(fields: [resellerId], references: [id], onDelete: Cascade)
-
-  @@unique([resellerId, productId])
+model produk {
+  id_produk          BigInt               @id
+  nama_produk        String               @db.VarChar(255)
+  bpom               String?              @db.VarChar(20)
+  harga_director     Int                  @default(0)
+  harga_manager      Int                  @default(0)
+  harga_supervisor   Int                  @default(0)
+  harga_consultant   Int                  @default(0)
+  harga_umum         Int                  @default(0)
+  foto_utama         String?
+  deskripsi_singkat  String?
+  created_at         DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime             @default(now()) @db.Timestamptz(6)
+  slug               String?              @unique @db.VarChar(255)
+  foto_produk        foto_produk[]
+  paket_isi          paket_isi[]
+  produk_bahan_aktif produk_bahan_aktif[]
+  produk_detail      produk_detail?
+  produk_kategori    produk_kategori[]
 }
 
-model instagram_execution_log {
-  id                       Int       @id @default(autoincrement())
-  execution_id             String    @unique @db.VarChar(100)
-  execution_type           String?   @default("scheduled") @db.VarChar(50)
-  started_at               DateTime? @default(now()) @db.Timestamp(6)
-  completed_at             DateTime? @db.Timestamp(6)
-  status                   String?   @default("running") @db.VarChar(20)
-  total_partners           Int?      @default(0)
-  processed_partners       Int?      @default(0)
-  total_comments_harvested Int?      @default(0)
-  execution_time_seconds   Decimal?  @db.Decimal(10, 2)
-  error_message            String?
-  summary_data             Json?
+model produk_bahan_aktif {
+  produk_id   BigInt
+  bahan_id    Int
+  fungsi      String?     @db.VarChar(100)
+  bahan_aktif bahan_aktif @relation(fields: [bahan_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  produk      produk      @relation(fields: [produk_id], references: [id_produk], onDelete: Cascade, onUpdate: NoAction)
 
-  @@index([started_at], map: "idx_execution_log_started_at")
-  @@index([status], map: "idx_execution_log_status")
+  @@id([produk_id, bahan_id])
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model instagram_partners {
-  id                         Int       @id @default(autoincrement())
-  partner_name               String    @db.VarChar(255)
-  ig_business_account_id     String    @unique @db.VarChar(50)
-  page_id                    String    @db.VarChar(50)
-  access_token               String
-  priority                   String?   @default("medium") @db.VarChar(20)
-  status                     String?   @default("active") @db.VarChar(20)
-  max_posts_limit            Int?      @default(100)
-  comments_enabled           Boolean?  @default(true)
-  last_processed             DateTime? @db.Timestamp(6)
-  total_comments_collected   Int?      @default(0)
-  avg_execution_time_seconds Decimal?  @default(0) @db.Decimal(8, 2)
-  error_count                Int?      @default(0)
-  last_error_message         String?
-  created_at                 DateTime? @default(now()) @db.Timestamp(6)
-  updated_at                 DateTime? @default(now()) @db.Timestamp(6)
-
-  @@index([last_processed], map: "idx_instagram_partners_last_processed")
-  @@index([priority], map: "idx_instagram_partners_priority")
-  @@index([status], map: "idx_instagram_partners_status")
+model produk_detail {
+  produk_id  BigInt  @id
+  kegunaan   String?
+  komposisi  String?
+  cara_pakai String?
+  netto      String? @db.VarChar(50)
+  no_bpom    String? @db.VarChar(30)
+  produk     produk  @relation(fields: [produk_id], references: [id_produk], onDelete: Cascade, onUpdate: NoAction, map: "fk_produk")
 }
 
-model reseller_profiles {
-  id               String    @id
-  city             String?
-  bio              String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime
-  resellerId       String    @unique
-  email_address    String?
-  photo_url        String?
-  whatsapp_number  String?
-  alamat           String?
-  apiData          Json?
-  area             String?
-  bank             String?
-  facebook         String?
-  instagram        String?
-  kabupaten        String?
-  kecamatan        String?
-  level            String?
-  nama_reseller    String?
-  nomor_hp         String?
-  provinsi         String?
-  rekening         String?
-  last_user_update DateTime? @db.Timestamptz(6)
-  resellers        resellers @relation(fields: [resellerId], references: [id], onDelete: Cascade)
-}
+model produk_kategori {
+  produk_id   BigInt
+  kategori_id Int
+  kategori    kategori @relation(fields: [kategori_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  produk      produk   @relation(fields: [produk_id], references: [id_produk], onDelete: Cascade, onUpdate: NoAction)
 
-model resellers {
-  id                String             @id
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime
-  nomorHp           String?            @unique
-  apiResellerId     String             @unique
-  joinDate          DateTime           @default(now())
-  status            String             @default("active")
-  clerk_user_id     String?            @unique
-  email_address     String?
-  photo_url         String?
-  apiData           Json?
-  last_api_sync_at  DateTime?          @db.Timestamptz(6)
-  click_logs        click_logs[]
-  harga_custom      harga_custom[]
-  reseller_profiles reseller_profiles?
+  @@id([produk_id, kategori_id])
 }
