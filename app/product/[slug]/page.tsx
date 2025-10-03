@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import Head from "next/head";
 import BuyButton from "@/components/BuyButton";
+import SafeImage from "../../../components/SafeImage";
 import Header from "../../../components/Header";
 import Footer from "../../../components/Footer";
 import { useState, useEffect } from "react";
@@ -27,22 +28,29 @@ interface Product {
     urutan: number;
   }> | null;
   slug: string;
-  bpom: string | null;
+  bpom?: string | null;
+  type?: 'product' | 'package';
   categories: {
     id: string;
     name: string;
     description: string | null;
   } | null;
-  detail: {
+  detail?: {
     kegunaan: string | null;
     komposisi: string | null;
     caraPakai: string | null;
     netto: string | null;
     noBpom: string | null;
   } | null;
-  bahanAktif: Array<{
+  bahanAktif?: Array<{
     nama: string;
     fungsi: string | null;
+  }> | null;
+  packageContents?: Array<{
+    id: string;
+    nama: string;
+    jumlah: number;
+    gambar: string | null;
   }> | null;
   createdAt: string;
   updatedAt: string;
@@ -184,7 +192,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
         <meta property="og:image:alt" content={`${product.namaProduk} - DRW Skincare`} />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="DRW Skincare" />
-        <meta property="og:url" content={`https://drwskincarebanyuwangi.com/product/${params.slug}`} />
+        <meta property="og:url" content={`https://drwskincarejakarta.com/product/${params.slug}`} />
         
         {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
@@ -192,7 +200,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
         <meta name="twitter:description" content={pageDescription} />
         <meta name="twitter:image" content={productImage} />
         
-        <link rel="canonical" href={`https://drwskincarebanyuwangi.com/product/${params.slug}`} />
+        <link rel="canonical" href={`https://drwskincarejakarta.com/product/${params.slug}`} />
       </Head>
       
       <div className="min-h-screen bg-white">
@@ -215,26 +223,14 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
             <div className="space-y-4">
               {/* Main Image */}
               <div className="relative">
-                {selectedImage && selectedImage !== '/logo_drwskincare_square.png' && !imageError ? (
-                  <Image 
-                    src={selectedImage} 
-                    alt={product.namaProduk} 
-                    width={600} 
-                    height={600} 
-                    className="rounded-lg shadow-lg w-full object-cover" 
-                    onError={() => setImageError(true)}
-                  />
-                ) : (
-                  <div className="bg-gray-200 rounded-lg shadow-lg w-full h-[600px] flex items-center justify-center">
-                    <div className="text-center text-gray-500">
-                      <svg className="mx-auto h-20 w-20 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      <p className="text-lg font-semibold">Foto Produk</p>
-                      <p className="text-sm">Tidak tersedia</p>
-                    </div>
-                  </div>
-                )}
+                <SafeImage 
+                  src={selectedImage || '/logo_drwskincare_square.png'} 
+                  alt={product.namaProduk} 
+                  width={600} 
+                  height={600} 
+                  className="rounded-lg shadow-lg w-full object-cover h-[600px]" 
+                  onError={() => setImageError(true)}
+                />
               </div>
               
               {/* Thumbnail Images */}
@@ -246,7 +242,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                       className={`cursor-pointer rounded-lg overflow-hidden ${selectedImage === product.gambar ? 'ring-2 ring-primary' : ''}`}
                       onClick={() => setSelectedImage(product.gambar!)}
                     >
-                      <Image 
+                      <SafeImage 
                         src={product.gambar} 
                         alt={product.namaProduk} 
                         width={150} 
@@ -262,7 +258,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                       className={`cursor-pointer rounded-lg overflow-hidden ${selectedImage === foto.url ? 'ring-2 ring-primary' : ''}`}
                       onClick={() => setSelectedImage(foto.url)}
                     >
-                      <Image 
+                      <SafeImage 
                         src={foto.url} 
                         alt={foto.alt || `${product.namaProduk} ${index + 1}`} 
                         width={150} 
@@ -296,11 +292,6 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                 {product.hargaUmum && (
                   <p className="text-3xl font-bold text-green-600">
                     Rp {Number(product.hargaUmum).toLocaleString('id-ID')}
-                  </p>
-                )}
-                {product.hargaConsultant && product.hargaConsultant !== product.hargaUmum && (
-                  <p className="text-sm text-gray-600">
-                    Harga Member: <span className="font-semibold text-primary">Rp {Number(product.hargaConsultant).toLocaleString('id-ID')}</span>
                   </p>
                 )}
               </div>
@@ -388,6 +379,46 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                       <p className="text-gray-700 leading-relaxed">{product.detail.komposisi}</p>
                     </div>
                   )}
+                </div>
+              </div>
+            </div>          )}
+
+          {/* Package Contents Section - Only for packages */}
+          {product.type === 'package' && product.packageContents && product.packageContents.length > 0 && (
+            <div className="mb-12">
+              <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+                <div className="bg-green-600 text-white px-6 py-4">
+                  <h2 className="text-xl font-bold flex items-center gap-2">
+                    <FontAwesomeIcon icon={faTag} className="w-5 h-5" />
+                    Isi Paket ({product.packageContents.length} Produk)
+                  </h2>
+                </div>
+                <div className="p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {product.packageContents.map((item, index) => (
+                      <div key={index} className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                        <div className="flex-shrink-0">
+                          {item.gambar ? (
+                            <SafeImage
+                              src={item.gambar}
+                              alt={item.nama}
+                              width={60}
+                              height={60}
+                              className="rounded-lg object-cover"
+                            />
+                          ) : (
+                            <div className="w-15 h-15 bg-gray-200 rounded-lg flex items-center justify-center">
+                              <FontAwesomeIcon icon={faTag} className="text-gray-400 text-2xl" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-gray-900 text-sm">{item.nama}</h4>
+                          <p className="text-green-600 font-medium text-sm">Jumlah: {item.jumlah}x</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>

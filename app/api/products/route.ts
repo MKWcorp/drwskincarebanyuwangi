@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 function serializeBigInt(obj: any): any {
   return JSON.parse(JSON.stringify(obj, (key, value) =>
     typeof value === 'bigint' ? value.toString() : value
-  ))
+  ));
 }
 
 export async function GET(request: NextRequest) {
@@ -18,12 +18,12 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl
     const slug = searchParams.get('slug')
     const type = searchParams.get('type') // 'products', 'packages', or 'all'
-      let products: any[] = []
-    let packages: any[] = []
     
-    if (slug) {
-      // Get specific product by slug
-      products = await prisma.produk.findMany({
+    let products: any[] = []
+    let packages: any[] = []
+      if (slug) {
+      // Get specific product by slug - check both produk and paket_produk tables
+      products = await (prisma as any).produk.findMany({
         where: { slug: slug },
         include: {
           produk_kategori: {
@@ -44,10 +44,38 @@ export async function GET(request: NextRequest) {
           }
         }
       })
+
+      // If no product found, check paket_produk table
+      if (products.length === 0) {
+        packages = await (prisma as any).paket_produk.findMany({
+          where: { slug: slug },
+          include: {
+            paket_kategori: {
+              include: {
+                kategori: true
+              }
+            },
+            foto_produk: {
+              orderBy: {
+                urutan: 'asc'
+              }
+            },
+            paket_isi: {
+              include: {
+                produk: {
+                  include: {
+                    produk_detail: true
+                  }
+                }
+              }
+            }
+          }
+        })
+      }
     } else {
       // Get products and packages based on type parameter
       if (!type || type === 'products' || type === 'all') {
-        products = await prisma.produk.findMany({
+        products = await (prisma as any).produk.findMany({
           include: {
             produk_kategori: {
               include: {
@@ -67,7 +95,7 @@ export async function GET(request: NextRequest) {
       }
 
       if (!type || type === 'packages' || type === 'all') {
-        packages = await prisma.paket_produk.findMany({
+        packages = await (prisma as any).paket_produk.findMany({
           include: {
             paket_kategori: {
               include: {
@@ -97,7 +125,8 @@ export async function GET(request: NextRequest) {
         })
       }
     }
-      // Transform products data
+
+    // Transform products data
     const transformedProducts = products.map((product: any) => ({
       id: product.id_produk.toString(),
       namaProduk: product.nama_produk,
