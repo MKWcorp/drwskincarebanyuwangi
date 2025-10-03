@@ -298,11 +298,6 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                     Rp {Number(product.hargaUmum).toLocaleString('id-ID')}
                   </p>
                 )}
-                {product.hargaConsultant && product.hargaConsultant !== product.hargaUmum && (
-                  <p className="text-sm text-gray-600">
-                    Harga Member: <span className="font-semibold text-primary">Rp {Number(product.hargaConsultant).toLocaleString('id-ID')}</span>
-                  </p>
-                )}
               </div>
 
               {/* BPOM */}
